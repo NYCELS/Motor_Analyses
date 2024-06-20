@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Entrada de Parâmetros do Motor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+        }
+        form div {
+            margin-bottom: 10px;
+        }
+        form label {
+            display: inline-block;
+            width: 200px;
+            text-align: right;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Entrada de Parâmetros do Motor</h1>
+
+    <form action="/plot" method="post">
+        <div>
+            <label for="rs">Rs (ohms):</label>
+            <input type="number" step="any" id="rs" name="rs" required>
+        </div>
+        <div>
+            <label for="xs">Xs (ohms):</label>
+            <input type="number" step="any" id="xs" name="xs" required>
+        </div>
+        <div>
+            <label for="rr">Rr (ohms):</label>
+            <input type="number" step="any" id="rr" name="rr" required>
+        </div>
+        <div>
+            <label for="xr">Xr (ohms):</label>
+            <input type="number" step="any" id="xr" name="xr" required>
+        </div>
+        <div>
+            <label for="xm">Xm (ohms):</label>
+            <input type="number" step="any" id="xm" name="xm" required>
+        </div>
+        <div>
+            <label for="V">Tensão nominal (V):</label>
+            <input type="number" step="any" id="V" name="V" required>
+        </div>
+        <div>
+            <label for="P">Número de polos:</label>
+            <input type="number" id="P" name="P" required>
+        </div>
+        <div>
+            <label for="f">Frequência (Hz):</label>
+            <input type="number" step="any" id="f" name="f" required>
+        </div>
+        <div>
+            <label for="P_out">Potência nominal (CV):</label>
+            <input type="number" step="any" id="P_out" name="P_out" required>
+        </div>
+        
+        <br>
+        <input type="submit" value="Gerar Gráficos">
+    </form>
+</body>
+</html>
+

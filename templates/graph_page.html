@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gráfico Gerado</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .chart {
+            flex: 2;
+            text-align: center;
+            margin-right: 20px;
+        }
+        .chart img {
+            width: 100%;
+            height: auto;
+        }
+        .table-container {
+            flex: 1;
+            text-align: left;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gráfico Gerado</h1>
+    
+    <div class="container">
+        <div class="chart">
+            <img src="data:image/png;base64,{{ img_str }}" alt="Gráfico de Torque">
+        </div>
+        <div class="table-container">
+            <h2>Tabela de Escorregamento e Torque</h2>
+            <table>
+                <caption>Dados do Gráfico</caption>
+                <tr>
+                    <th>Escorregamento (s)</th>
+                    <th>Torque (Nm)</th>
+                </tr>
+                {% for s, torque in table_data %}
+                    <tr>
+                        <td>{{ s }}</td>
+                        <td>{{ torque }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <br><br>
+    <button onclick="window.history.back()">Voltar</button>
+</body>
+</html>
