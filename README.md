@@ -13,5 +13,5 @@ Este é um projeto Flask para gerar gráficos de torque em função do escorrega
 
 1. Clone o repositório:
    ```sh
-   git clone https://github.com/seu-usuario/flask-torque-graph.git
-   cd flask-torque-graph
+   git clone https://github.com/NYCELS/Motor_Analyses/edit/master/README.md
+   cd motor_analysis
