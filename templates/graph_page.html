@@ -1,72 +1,265 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Gráfico Gerado</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            text-align: center;
-        }
-        .container {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-        }
-        .chart {
-            flex: 2;
-            text-align: center;
-            margin-right: 20px;
-        }
-        .chart img {
-            width: 100%;
-            height: auto;
-        }
-        .table-container {
-            flex: 1;
-            text-align: left;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
-</head>
-<body>
-    <h1>Gráfico Gerado</h1>
+<html lang="pt-br">
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gráfico e Tabela</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f0f0;
+                margin: 20px;
+                text-align: left; /* Alinhamento do texto à esquerda */
+            }
+            h2 {
+                color: #333;
+                text-align: center; /* Centraliza o título */
+                font-size: 35px; /* Aumenta o tamanho da fonte */
+            }
     
-    <div class="container">
-        <div class="chart">
-            <img src="data:image/png;base64,{{ img_str }}" alt="Gráfico de Torque">
+            .header {
+                background-color: #004080;
+                padding: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center; /* Centraliza o conteúdo no header */
+                box-shadow: 0 2px 5px rgb(0, 0, 0);
+                position: relative; /* Necessário para posicionar os botões */
+            }
+            .header img {
+                height: 40px; /* Altura da imagem do símbolo */
+                position: absolute;
+                left: 20px; /* Posiciona o símbolo à esquerda */
+            }
+            .header h1 {
+                color: #ffffff;
+                font-size: 60px; /* Tamanho da fonte do título */
+                margin: 0; /* Remove a margem do título */
+                text-align: center; /* Centraliza o título */
+            }
+            .buttons-container {
+                position: absolute;
+                right: 20px; /* Alinha os botões à direita */
+                bottom: 20px; /* Posiciona os botões no fundo */
+                display: flex;
+                gap: 10px;
+            }
+            .print-button, .export-button {
+                background-color: #007bff; /* Azul mais claro para os botões */
+                color: white;
+                padding: 12px 24px; /* Ajuste o padding para os botões */
+                border: none;
+                border-radius: 8px; /* Borda mais arredondada */
+                cursor: pointer;
+                font-size: 16px; /* Tamanho da fonte */
+                transition: background-color 0.3s ease;
+            }
+            .print-button:hover, .export-button:hover {
+                background-color: #0056b3; /* Azul mais escuro ao passar o mouse */
+            }
+            #content {
+                display: flex;
+                justify-content: space-between; /* Espaça os conteúdos horizontalmente */
+                align-items: stretch; /* Garante que o gráfico e a tabela tenham a mesma altura */
+                gap: 20px; /* Espaço entre o gráfico e a tabela */
+                margin-top: 20px;
+            }
+            #plot-container {
+                flex: 2;
+                display: flex;
+                align-items: center; /* Centraliza verticalmente o gráfico */
+                justify-content: center; /* Centraliza horizontalmente o gráfico */
+                margin-bottom: 20px;
+                background-color: #fff; /* Fundo branco para o gráfico */
+                padding: 20px; /* Espaço interno para evitar que o gráfico encoste nas bordas */
+                border-radius: 8px; /* Bordas arredondadas */
+                box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Sombra ao redor do gráfico */
+            }
+            #plot {
+                width: 100%;
+                height: 100%; /* Altura ajustável para coincidir com a tabela */
+                object-fit: contain; /* Mantém a proporção do gráfico */
+                display: block;
+            }
+            .side-table-container {
+                flex: 1; /* Ocupa menos espaço que o gráfico */
+                display: flex;
+                flex-direction: column; /* Para que a tabela ocupe o mesmo espaço vertical do gráfico */
+            }
+            .side-table {
+                width: 100%;
+                max-width: 100%;
+                margin: 0 auto;
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                overflow-x: auto; /* Permitir rolagem horizontal se necessário */
+                margin-bottom: 20px;
+            }
+            .side-table th, .side-table td {
+                padding: 10px;
+                text-align: center;
+                border: 1px solid #ddd;
+                white-space: nowrap; /* Evita quebra de linha nas células */
+            }
+            .side-table th {
+                background-color: #004080; /* Azul escuro para o cabeçalho */
+                color: white; /* Texto branco no cabeçalho */
+                font-weight: bold;
+            }
+            .side-table td {
+                background-color: #f0f0f0; /* Azul mais claro para as células */
+            }
+            #data-table {
+                width: 100%;
+                max-width: 100%;
+                margin: 0 auto;
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                overflow-x: auto; /* Permitir rolagem horizontal se necessário */
+                margin-bottom: 20px;
+            }
+            #data-table th, #data-table td {
+                padding: 10px;
+                text-align: center;
+                border: 1px solid #ddd;
+            }
+            #data-table th {
+                background-color: #004080; /* Azul escuro para o cabeçalho */
+                color: white; /* Texto branco no cabeçalho */
+                font-weight: bold;
+            }
+            .side-table td {
+                background-color: #fff; /* Fundo branco para as células */
+            }
+        </style>
+    </head>
+    </head>
+<body>
+        <div class="header">
+            <img src="/motor_analysis/Santa.png" alt="Símbolo">
+            <h1>Simulação do motor</h1>
+            <div class="buttons-container">
+                <button class="print-button" onclick="printGraph()">Imprimir Gráfico</button>
+                <button class="export-button" onclick="exportToExcel()">Exportar para Excel</button>
+            </div>
         </div>
-        <div class="table-container">
-            <h2>Tabela de Escorregamento e Torque</h2>
-            <table>
-                <caption>Dados do Gráfico</caption>
-                <tr>
-                    <th>Escorregamento (s)</th>
-                    <th>Torque (Nm)</th>
-                </tr>
-                {% for s, torque in table_data %}
+
+    <h2>Curvas de Torque em Função do Escorregamento</h2>
+
+    <div id="content">
+        <div id="plot-container">
+            <img id="plot" src="data:image/png;base64,{{ img_str }}" alt="Gráfico">
+        </div>
+
+        <div class="side-table-container">
+            <table class="side-table" border="1">
+                <thead>
                     <tr>
-                        <td>{{ s }}</td>
-                        <td>{{ torque }}</td>
+                        <th>Paramêtros do motor</th>
+                        <th>Valores</th>
                     </tr>
-                {% endfor %}
+                </thead>
+                <tbody>
+                    <tr><td>P(CV)</td><td>-</td></tr>
+                    <tr><td>V</td><td>-</td></tr>
+                    <tr><td>Rendimento</td><td>-</td></tr>
+                    <tr><td>Fp</td><td>-</td></tr>
+                    <tr><td>Ligação</td><td>-</td></tr>
+                    <tr><td>J</td><td>-</td></tr>
+                    <tr><td>rs</td><td>-</td></tr>
+                    <tr><td>x'r</td><td>-</td></tr>
+                    <tr><td>xs</td><td>-</td></tr>
+                    <tr><td>r'r</td><td>-</td></tr>
+                    <tr><td>K1</td><td>-</td></tr>
+                    <tr><td>K2</td><td>-</td></tr>
+                    <tr><td>Vth</td><td>-</td></tr>
+                    <tr><td>Rsth</td><td>-</td></tr>
+                    <tr><td>Xsth</td><td>-</td></tr>
+                    <tr><td>ws</td><td>-</td></tr>
+                    <tr><td>P(kw)</td><td>-</td></tr>
+                    <tr><td>Tn</td><td>-</td></tr>
+                    <tr><td>P rend(Kw)</td><td>-</td></tr>
+                    <tr><td>S (KVA)</td><td>-</td></tr>
+                    <tr><td>In</td><td>-</td></tr>
+                    <tr><td>Ip</td><td>-</td></tr>
+                    <tr><td>nr (RPM)</td><td>-</td></tr>
+                    <tr><td>Io </td><td>-</td></tr>
+                    <tr><td>Xmg</td><td>-</td></tr>  
+                </tbody>
             </table>
         </div>
     </div>
+    
+    <h2>Resultados da simulação</h2>
 
-    <br><br>
-    <button onclick="window.history.back()">Voltar</button>
+    <table id="data-table" border="1">
+        <thead>
+            <tr>
+                <th>Escorregamento (s)</th>
+                <th>Torque (T)</th>
+                <th>Rsth</th>
+                <th>Xsth</th>
+                <th>Xr</th>
+                <th>Rr0</th>
+                <th>Rr</th>
+                <th>Vth</th>
+                <th>W</th>
+                <th>Xe2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_data %}
+                <tr>
+                    <td>{{ row.s }}</td>
+                    <td>{{ row.T }}</td>
+                    <td>{{ row.Rsth }}</td>
+                    <td>{{ row.Xsth }}</td>
+                    <td>{{ row.x_r }}</td>
+                    <td>{{ row.r_r0 }}</td>
+                    <td>{{ row.r_r }}</td>
+                    <td>{{ row.Vth }}</td>
+                    <td>{{ row.w }}</td>
+                    <td>{{ row.Xe2 }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function printGraph() {
+            var graph = document.getElementById('plot');
+            var printWindow = window.open('', '_blank');
+            printWindow.document.write('<html><head><title>Print</title></head><body>');
+            printWindow.document.write('<img src="' + graph.src + '" />');
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function exportToExcel() {
+            var table = document.getElementById('data-table');
+            var html = table.outerHTML;
+
+            // Formatar o HTML para o Excel
+            var uri = 'data:application/vnd.ms-excel;base64,';
+            var base64 = function(s) { return window.btoa(unescape(encodeURIComponent(s))); };
+            var formattedHtml = '<html><head><meta charset="UTF-8"></head><body>' + html + '</body></html>';
+            var url = uri + base64(formattedHtml);
+
+            // Criar um link de download e clicar nele
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'tabela_motor_inducao.xls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
 </body>
 </html>
