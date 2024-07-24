@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráfico e Tabela</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: white;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+            font-size: 28px;
+            margin: 20px 0;
+        }
+
+        .header {
+            background-color: #004080;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            height: 80px;
+            color: white;
+        }
+
+        .header img {
+            height: 40px;
+            margin-left: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 10px;
+            margin-right: 20px;
+        }
+
+        .print-button, .export-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .print-button:hover, .export-button:hover {
+            background-color: #0056b3;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin: 20px;
+        }
+
+        .graph-container {
+            flex: 4;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            max-width: 3000px;
+            height: 770px;
+            overflow: auto;
+        }
+
+        .graph-container:hover .arrow-button {
+            opacity: 1;
+        }
+
+        .graph {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .arrow-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+            padding: 10px;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .arrow-button.left {
+            left: 10px;
+        }
+
+        .arrow-button.right {
+            right: 10px;
+        }
+
+        .side-table-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 20px;
+            min-width: 200px;
+        }
+
+        .side-table, .results-table {
+            width: 100%;
+            background-color: white;
+            padding: 0;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-collapse: collapse;
+            overflow-x: auto;
+        }
+
+        .side-table th, .side-table td,
+        .results-table th, .results-table td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+        }
+
+        .side-table th, .results-table th {
+            background-color: #004080;
+            color: white;
+            font-weight: bold;
+        }
+
+        .side-table td, .results-table td {
+            background-color: #f9f9f9;
+        }
+
+        .results-table-container {
+            margin-top: 40px;
+            margin-left: 20px;
+        }
+
+        .footer {
+            background-color: #004080;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            position: relative;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        @media print {
+            .print-button, .export-button, .header, .footer {
+                display: none;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="buttons-container">
+            <button class="print-button" onclick="printGraph()">Imprimir Gráfico</button>
+            <button class="export-button" onclick="exportToExcel()">Exportar para Excel</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="graph-container">
+            <button class="arrow-button left" onclick="prevGraph()">&#9664;</button>
+            <img id="graph" class="graph" src="data:image/png;base64,{{ img_str1 }}" alt="Gráfico">
+            <button class="arrow-button right" onclick="nextGraph()">&#9654;</button>
+        </div>
+        <div class="side-table-container">
+            <table class="side-table" border="1">
+                <thead>
+                    <tr>
+                        <th>Parâmetros do Motor</th>
+                        <th>Valores</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>P (CV)</td><td>{{ P }}</td></tr>
+                    <tr><td>V</td><td>{{ V }}</td></tr>
+                    <tr><td>Rendimento</td><td>{{ rend }}</td></tr>
+                    <tr><td>Fp</td><td>{{ Fp }}</td></tr>
+                    <tr><td>Ligação</td><td>{{ conexao }}</td></tr>
+                    <tr><td>J</td><td>{{ J }}</td></tr>
+                    <tr><td>rs</td><td>{{ rs }}</td></tr>
+                    <tr><td>x'r</td><td>{{ xr }}</td></tr>
+                    <tr><td>xs</td><td>{{ xs }}</td></tr>
+                    <tr><td>r'r</td><td>{{ rr }}</td></tr>
+                    <tr><td>Vth</td><td>{{ Vth }}</td></tr>
+                    <tr><td>Rsth</td><td>{{ Rsth }}</td></tr>
+                    <tr><td>Xsth</td><td>{{ Xth }}</td></tr>
+                    <tr><td>ωs (rad/s)</td><td>{{ ws }}</td></tr>
+                    <tr><td>Pkw</td><td>{{ Pkw }}</td></tr>
+                    <tr><td>Tn (N.m)</td><td>{{ Tn }}</td></tr>
+                    <tr><td>Pkw rend</td><td>{{ Pkwrend }}</td></tr>
+                    <tr><td>S</td><td>{{ S }}</td></tr>
+                    <tr><td>In (A)</td><td>{{ In }}</td></tr>
+                    <tr><td>Io (A)</td><td>{{ Io }}</td></tr>
+                    <tr><td>Xm g</td><td>{{ xmg }}</td></tr>
+                    <tr><td>Ip (A)</td><td>{{ Ip }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="results-table-container">
+        <table class="results-table" border="1">
+            <thead>
+                <tr>
+                    <th>s</th>
+                    <th>rr novo</th>
+                    <th>Tnumerador</th>
+                    <th>Tdenominador</th>
+                    <th>Tmg</th>
+                    <th>Tat</th>
+                    <th>Teixo</th>
+                    <th>Peixo</th>
+                    <th>Tcarga</th>
+                    <th>Ta</th>
+                    <th>tempo subida</th>
+                    <th>Ir</th>
+                    <th>Icosφ</th>
+                    <th>Isinφ</th>
+                    <th>Is</th>
+
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_data %}
+                    <tr>
+                        <td>{{ row.s }}</td>
+                        <td>{{ row.rrnovo }}</td>
+                        <td>{{ row.Tnumerador }}</td>
+                        <td>{{ row.Tdenominador }}</td>
+                        <td>{{ row.Tmg }}</td>
+                        <td>{{ row.Tat }}</td>
+                        <td>{{ row.Teixo }}</td>
+                        <td>{{ row.Peixo }}</td>
+                        <td>{{ row.Tcarga }}</td>
+                        <td>{{ row.Ta }}</td>
+                        <td>{{ row.Temposubida  }}</td>
+                        <td>{{ row.Ir }}</td>
+                        <td>{{ row.Icosφ }}</td>
+                        <td>{{ row.Isinφ }}</td>
+                        <td>{{ row.Is }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <h3>Developed by Nycolas Eduardo</h3>
+    </div>
+
+    <script>
+        function printGraph() {
+            const graphs = [
+                'data:image/png;base64,{{ img_str1 }}',
+                'data:image/png;base64,{{ img_str2 }}',
+                'data:image/png;base64,{{ img_str3 }}'
+            ];
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write('<html><head><title>Imprimir Gráficos</title>');
+            printWindow.document.write('<style>body { font-family: Arial, sans-serif; }</style>');
+            printWindow.document.write('</head><body>');
+
+            graphs.forEach(src => {
+                printWindow.document.write('<img src="' + src + '" style="width:100%;margin-bottom:20px;">');
+            });
+
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.onload = function() {
+                printWindow.print();
+                printWindow.close();
+            };
+        }
+
+        let currentGraph = 0;
+        const totalGraphs = 3;
+
+        function showGraph(index) {
+            const graph = document.getElementById('graph');
+            const graphSources = [
+                'data:image/png;base64,{{ img_str1 }}',
+                'data:image/png;base64,{{ img_str2 }}',
+                'data:image/png;base64,{{ img_str3 }}'
+            ];
+            graph.src = graphSources[index];
+        }
+
+        function prevGraph() {
+            currentGraph = (currentGraph - 1 + totalGraphs) % totalGraphs;
+            showGraph(currentGraph);
+        }
+
+        function nextGraph() {
+            currentGraph = (currentGraph + 1) % totalGraphs;
+            showGraph(currentGraph);
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.table_to_sheet(document.querySelector('.side-table'));
+            const ws2 = XLSX.utils.table_to_sheet(document.querySelector('.results-table'));
+
+            XLSX.utils.book_append_sheet(wb, ws1, "Parâmetros");
+            XLSX.utils.book_append_sheet(wb, ws2, "Resultados");
+
+            XLSX.writeFile(wb, "relatorio.xlsx");
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            showGraph(currentGraph);
+        });
+    </script>
+</body>
+</html>
