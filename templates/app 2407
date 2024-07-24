@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import io
 import base64
+import math
 
 app = Flask(__name__, static_folder='motor_analysis')
 
@@ -29,8 +30,8 @@ def plot():
     rr = float(request.form['rr'])
     xr = float(request.form['xr'])
     V = float(request.form['V'])
-    P = int(request.form['P'])
-    J = int(request.form['J'])
+    P = float(request.form['P'])
+    J = float(request.form['J'])
     Fp = float(request.form['Fp'])
     polos = int(request.form['polos'])
     rend = float(request.form['rend'])
@@ -112,20 +113,49 @@ def plot():
     # Remover NaNs gerados pelo shift
     df_s = df_s.dropna()
 
+    # Calculando AnguloIr1
+    AnguloIr1 = rrnovo / s
+
+    # Calculando AnguloIr2
+    AnguloIr2 = np.arctan((Xth + xr) / (Rsth + AnguloIr1))
+
+    # Calculando Ircos
+    Ircos = Ir * np.cos(AnguloIr2)
+
+    # Convertendo 85 graus para radianos
+    Aux = np.arctan(Fp)
+
+    # Calculando Irsin e Iocos
+    Irsin = Ir * np.sin(AnguloIr2)
+    Iocos = Io * np.cos(Aux)
+
+    # Calculando Iosin
+    Iosin = Io * np.sin(Aux)
+
+    # Calculando Is1 e Is2
+    Is1 = Irsin + Iosin
+    Is2 = Iocos + Ircos
+
+    # Calculando Is
+    Is = np.sqrt(Is1**2 + Is2**2)
+
     # Inverter o eixo x e ordenar a tabela do maior para o menor escorregamento
     s_invertido = np.flip(s)
     T_invertido = np.flip(Tmg)
     Ir_invertido = np.flip(Ir)
+    Is_invertido = np.flip(Is) 
+    Ircos_invertido = np.flip(Ircos)
+    Irsin_invertido = np.flip(Irsin)
     Teixo_invertido = np.flip(Teixo)
     Peixo_invertido = np.flip(Peixo)
     Tcarga_invertido = np.flip(Tcarga)
     Ta_invertido = np.flip(Ta)
     Tat_invertido = np.flip(Tat)
-    sorted_table_data = sorted(zip(s_invertido.tolist(), T_invertido.tolist(), Teixo_invertido.tolist(), Peixo_invertido.tolist(), Tcarga_invertido.tolist(), Tat_invertido.tolist(), Ta_invertido.tolist(), Ir_invertido.tolist()), key=lambda x: x[0], reverse=True)
-
+    sorted_table_data = sorted(zip(s_invertido.tolist(), T_invertido.tolist(), Teixo_invertido.tolist(), Peixo_invertido.tolist(), Tcarga_invertido.tolist(), Tat_invertido.tolist(), Ta_invertido.tolist(), Ir_invertido.tolist(), Is_invertido.tolist(), Ircos_invertido.tolist(), Irsin_invertido.tolist()), key=lambda x: x[0], reverse=True)
+   
     # Preparar dados para a tabela com arredondamento
     table_data = []
-    for i, (s_val, T_val, Teixo_val, Peixo_val, Tcarga_val, Tat_val, Ta_val, Ir_val) in enumerate(sorted_table_data):
+    for i, (s_val, T_val, Teixo_val, Peixo_val, Tcarga_val, Tat_val, Ta_val, Ir_val, Is_val, Ircos_val, Irsin_val) in enumerate(sorted_table_data):
         row = {
             's': safe_value(round(s_val, 4)),
             'Tmg': safe_value(round(T_val, 4)),
@@ -133,12 +163,15 @@ def plot():
             'Teixo': safe_value(round(Teixo_val, 4)),
             'rrnovo': safe_value(round(rrnovo[i], 4)),
             'Peixo': safe_value(round(Peixo_val, 4)),
-            'Ir': safe_value(round(Ir_val, 4)),  # Corrente Rotórica (Ir) para cada valor de s
+            'Ir': safe_value(round(Ir_val, 4)),
+            'Is': safe_value(round(Is_val, 4)),
+            'Icosφ': safe_value(round(Ircos_val, 4)),
+            'Isinφ': safe_value(round(Irsin_val, 4)),
             'Tcarga': safe_value(round(Tcarga_val, 4)),
             'Ta': safe_value(round(Ta_val, 4)),
             'Temposubida': safe_value(round(df_s['Temposubida'].iloc[i], 4)) if i < len(df_s) else None,
             'Tnumerador': safe_value(round(Tnumerador[i], 4)) if i < len(Tnumerador2) else None,
-            'Tdenominador': safe_value(round(Tdenominador[i], 4)) if i < len(Tdenominador) else None
+            'Tdenominador': safe_value(round(Tdenominador[i], 4)) if i < len(Tdenominador) else None,
         }
         table_data.append(row)
 
@@ -150,25 +183,34 @@ def plot():
     data_Ta = prepare_graph_data(Ta_invertido)
     data_Tat = prepare_graph_data(Tat_invertido)
     data_Ir = prepare_graph_data(Ir_invertido)
-
+    data_Is = prepare_graph_data(Is_invertido)
+    data_Ircos = prepare_graph_data(Ircos_invertido)
+    data_Irsin = prepare_graph_data(Irsin_invertido)
+    data_Ta_filtered = np.clip(data_Ta, 0, None)
 
     # Gerar imagem do gráfico 1
-    fig1, ax1 = plt.subplots(figsize=(10, 6))
+    fig1, ax1 = plt.subplots(figsize=(12, 6))
     ax1.plot(data_s, data_T, label='Torque Magnético')
     ax1.plot(data_s, data_Teixo, label='Torque no Eixo')
     ax1.plot(data_s, data_Peixo, label='Potência no Eixo')
     ax1.plot(data_s, data_Tcarga, label='Torque na carga')
-    ax1.plot(data_s, data_Ta, label='Ta')
+    ax1.plot(data_s, data_Ta_filtered, label='Ta')
     ax1.plot(data_s, data_Tat, label='Atrito + ventilação')
     ax1.set_title('Curvas de Torque em Função do Escorregamento')
     ax1.set_xlabel('Escorregamento (s)')
     ax1.set_ylabel('Torque (Nm)')
-    plt.xticks(np.arange(0, 1.1, step=0.05))  # Define os ticks no eixo X
-    min_y_Tmg, max_y_Tmg = np.min(data_T), np.max(data_T)
-    tick_interval_Tmg = (max_y_Tmg - min_y_Tmg) / 2
+    plt.xticks(np.arange(1, -0.05, -0.05))  # Cria ticks no intervalo de 1 a 0
+    # Definindo ticks no eixo y de 10 em 10
+    max_y = np.max([np.max(data_T), np.max(data_Teixo), np.max(data_Peixo), np.max(data_Tcarga), np.max(data_Ta), np.max(data_Tat)])
+    ax1.set_yticks(np.arange(0, max_y+100, step=20))
+    # Adiciona uma margem de 50 unidades no eixo Y
+    margin = 50
+    ax1.set_ylim([0, max_y + margin])
+    ax1.margins(y=0)  # Remove margem extra no eixo Y
     ax1.set_xlim([1, 0])  # Definir limite do eixo x de 1 a 0, invertido
     ax1.grid(True)  # Adicionar linhas de grade ao gráfico
-    ax1.legend()
+    ax1.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.tight_layout() 
 
     # Salvar a imagem em um arquivo temporário e converter para base64
     img_stream1 = io.BytesIO()
@@ -182,14 +224,40 @@ def plot():
     # Gerar imagem do gráfico 2
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     ax2.plot(data_s, data_Ir, label='Corrente Rotórica (Ir)')
+    ax2.plot(data_s, data_Is, label='Corrente Total (Is)')
+    ax2.plot(data_s, data_Ircos, label='Corrente Rotórica (Icosφ)')
+    ax2.plot(data_s, data_Irsin, label='Corrente Rotórica (Isinφ)')
     ax2.axhline(Io, color='r', linestyle='--', label='Corrente de Magnetização (Io)')
     ax2.set_title('Corrente Rotórica e de Magnetização em Função do Escorregamento')
     ax2.set_xlabel('Escorregamento (s)')
     ax2.set_ylabel('Corrente (A)')
-    ax2.set_xlim([1, 0])  # Definir limite do eixo x de 1 a 0, invertido
-    ax2.grid(True)  # Adicionar linhas de grade ao gráfico
-    ax2.legend()
 
+    # Define os ticks no eixo X de 1 a 0 com intervalo de 0.05
+    plt.xticks(np.arange(1, -0.05, -0.05))
+
+    # Calcula o máximo dos dados para o eixo Y
+    max_y = np.max([np.max(data_Ir), np.max(data_Is), np.max(data_Ircos), np.max(data_Irsin)])
+
+    # Adiciona uma margem de 50 unidades no eixo Y
+    margin = 50
+    ax2.set_ylim([0, max_y + margin])
+
+    # Define ticks no eixo Y de 20 em 20
+    ax2.set_yticks(np.arange(0, max_y + margin + 20, step=20))
+
+    # Ajusta o limite do eixo X de 1 a 0, invertido
+    ax2.set_xlim([1, 0])
+
+    # Remove margem extra no eixo Y
+    ax2.margins(y=0)
+
+    # Adiciona linhas de grade ao gráfico
+    ax2.grid(True)
+
+    # Posiciona a legenda fora do gráfico, à direita
+    ax2.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize='small')
+    # Ajusta o layout para garantir que a legenda não sobreponha outros elementos
+    plt.tight_layout()
 
     # Salvar a imagem em um arquivo temporário e converter para base64
     img_stream2 = io.BytesIO()
