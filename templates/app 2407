@@ -1,0 +1,252 @@
+from flask import Flask, request, render_template, jsonify, send_file
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import io
+import base64
+
+app = Flask(__name__, static_folder='motor_analysis')
+
+def round_values(values, decimal_places=4):
+    """Arredonda uma lista de valores para o número especificado de casas decimais"""
+    return [round(value, decimal_places) for value in values]
+
+def safe_value(value):
+    """Retorna um valor seguro, tratando NaN, infinitos e arredondando"""
+    if value is None or value == float('inf') or value == float('-inf') or value != value:  # NaN check
+        return 0.0
+    return round(value, 4)
+
+def prepare_graph_data(raw_data):
+    """Prepara os dados do gráfico arredondando e tratando valores seguros"""
+    return [safe_value(value) for value in raw_data]
+
+@app.route('/plot', methods=['POST'])
+def plot():
+    # Obter parâmetros do formulário
+    rs = float(request.form['rs'])
+    xs = float(request.form['xs'])
+    rr = float(request.form['rr'])
+    xr = float(request.form['xr'])
+    V = float(request.form['V'])
+    P = int(request.form['P'])
+    J = int(request.form['J'])
+    Fp = float(request.form['Fp'])
+    polos = int(request.form['polos'])
+    rend = float(request.form['rend'])
+    conexao = request.form['conexao']
+    nr = float(request.form['nr'])
+    f = float(request.form['f'])
+
+    # Ajustar a tensão V com base no tipo de ligação
+    Vlinha = V / np.sqrt(3) if conexao == 'estrela' else V
+
+    # Range de escorregamento
+    s = np.concatenate([np.linspace(1, 0.1, 101), np.linspace(0.001, 0.001, 1)])  # Escorregamento variando de 1 até 0.001
+
+    # Potência em Kilo watts
+    Pkw = P * 0.73551
+
+    # Potência em kilo watts em relação ao rendimento
+    Pkwrend = Pkw / rend
+
+    # Potência aparente
+    S = Pkwrend / Fp
+
+    # Corrente nominal
+    In = S * 1000 / (Vlinha * np.sqrt(3))
+
+    Io = In * 0.35
+    Ip = In * 7.5
+
+    # XMG
+    xmg = (Vlinha / np.sqrt(3)) / Io
+
+    # Torque nominal
+    Tn = 1000 * Pkw / (2 * np.pi * (nr / f))
+
+    Vth1 = Vlinha / np.sqrt(3)
+    Vth2 = Vth1 * xmg
+    Vth = Vth2 / (xmg + xs)
+
+    Rsth = (rs * (xmg ** 2)) / ((xs + xmg) ** 2)
+    Xth = (xs * (xmg ** 2)) / ((xs + xmg) ** 2)
+
+    # Escorregamento ajustado
+    rrnovo1 = s * rr 
+    rrnovo = rrnovo1 + rr
+    pp = polos / 2
+    ns = f / pp
+    ws = 2 * np.pi * ns
+
+    # Calcular o Torque Magnético
+    Tnumerador1 = Vth**2 * 3 * (rrnovo/s)
+    Tnumerador2 = Tnumerador1 / ws
+    Tnumerador = Tnumerador2
+
+    Tdenominador1 = (Xth + xs)**2
+    Tdenominador2 = rrnovo/s + Rsth
+    Tdenominador3 = Tdenominador2**2
+    Tdenominador = Tdenominador1 + Tdenominador3
+
+    Tmg = Tnumerador / Tdenominador
+
+    Tat1 = Tmg * 0.029
+    Tat2 = 1 - s
+    Tat = Tat1 * Tat2
+
+    Teixo = Tmg - Tat
+    Peixo = Teixo * ws * (1 - s) / 1000
+    Ir = Vth / np.sqrt(Tdenominador)  # Corrente Rotórica (Ir) constante
+
+    Tcarga = 480 * (0.5 + (1.03 - s) / 2)
+    Ta = Teixo - Tcarga
+
+    # Tempo de subida
+    df_ta = pd.DataFrame({'Ta': Ta})
+    df_ta['D'] = (df_ta['Ta'] + df_ta['Ta'].shift(-1)) / 2
+    df_s = pd.DataFrame({'s': s})
+    df_s['N'] = J * ws * (df_s['s'] - df_s['s'].shift(-1))
+    df_s['Temposubida'] = df_s['N'] / df_ta['D']
+
+    # Remover NaNs gerados pelo shift
+    df_s = df_s.dropna()
+
+    # Inverter o eixo x e ordenar a tabela do maior para o menor escorregamento
+    s_invertido = np.flip(s)
+    T_invertido = np.flip(Tmg)
+    Ir_invertido = np.flip(Ir)
+    Teixo_invertido = np.flip(Teixo)
+    Peixo_invertido = np.flip(Peixo)
+    Tcarga_invertido = np.flip(Tcarga)
+    Ta_invertido = np.flip(Ta)
+    Tat_invertido = np.flip(Tat)
+    sorted_table_data = sorted(zip(s_invertido.tolist(), T_invertido.tolist(), Teixo_invertido.tolist(), Peixo_invertido.tolist(), Tcarga_invertido.tolist(), Tat_invertido.tolist(), Ta_invertido.tolist(), Ir_invertido.tolist()), key=lambda x: x[0], reverse=True)
+
+    # Preparar dados para a tabela com arredondamento
+    table_data = []
+    for i, (s_val, T_val, Teixo_val, Peixo_val, Tcarga_val, Tat_val, Ta_val, Ir_val) in enumerate(sorted_table_data):
+        row = {
+            's': safe_value(round(s_val, 4)),
+            'Tmg': safe_value(round(T_val, 4)),
+            'Tat': safe_value(round(Tat_val, 4)),
+            'Teixo': safe_value(round(Teixo_val, 4)),
+            'rrnovo': safe_value(round(rrnovo[i], 4)),
+            'Peixo': safe_value(round(Peixo_val, 4)),
+            'Ir': safe_value(round(Ir_val, 4)),  # Corrente Rotórica (Ir) para cada valor de s
+            'Tcarga': safe_value(round(Tcarga_val, 4)),
+            'Ta': safe_value(round(Ta_val, 4)),
+            'Temposubida': safe_value(round(df_s['Temposubida'].iloc[i], 4)) if i < len(df_s) else None,
+            'Tnumerador': safe_value(round(Tnumerador[i], 4)) if i < len(Tnumerador2) else None,
+            'Tdenominador': safe_value(round(Tdenominador[i], 4)) if i < len(Tdenominador) else None
+        }
+        table_data.append(row)
+
+    data_s = prepare_graph_data(s_invertido)
+    data_T = prepare_graph_data(T_invertido)
+    data_Teixo = prepare_graph_data(Teixo_invertido)
+    data_Peixo = prepare_graph_data(Peixo_invertido)
+    data_Tcarga = prepare_graph_data(Tcarga_invertido)
+    data_Ta = prepare_graph_data(Ta_invertido)
+    data_Tat = prepare_graph_data(Tat_invertido)
+    data_Ir = prepare_graph_data(Ir_invertido)
+
+
+    # Gerar imagem do gráfico 1
+    fig1, ax1 = plt.subplots(figsize=(10, 6))
+    ax1.plot(data_s, data_T, label='Torque Magnético')
+    ax1.plot(data_s, data_Teixo, label='Torque no Eixo')
+    ax1.plot(data_s, data_Peixo, label='Potência no Eixo')
+    ax1.plot(data_s, data_Tcarga, label='Torque na carga')
+    ax1.plot(data_s, data_Ta, label='Ta')
+    ax1.plot(data_s, data_Tat, label='Atrito + ventilação')
+    ax1.set_title('Curvas de Torque em Função do Escorregamento')
+    ax1.set_xlabel('Escorregamento (s)')
+    ax1.set_ylabel('Torque (Nm)')
+    plt.xticks(np.arange(0, 1.1, step=0.05))  # Define os ticks no eixo X
+    min_y_Tmg, max_y_Tmg = np.min(data_T), np.max(data_T)
+    tick_interval_Tmg = (max_y_Tmg - min_y_Tmg) / 2
+    ax1.set_xlim([1, 0])  # Definir limite do eixo x de 1 a 0, invertido
+    ax1.grid(True)  # Adicionar linhas de grade ao gráfico
+    ax1.legend()
+
+    # Salvar a imagem em um arquivo temporário e converter para base64
+    img_stream1 = io.BytesIO()
+    plt.savefig(img_stream1, format='png')
+    img_stream1.seek(0)
+    img_str1 = base64.b64encode(img_stream1.getvalue()).decode('utf-8')
+
+    # Encerrar a figura para liberar memória
+    plt.close(fig1)
+
+    # Gerar imagem do gráfico 2
+    fig2, ax2 = plt.subplots(figsize=(10, 6))
+    ax2.plot(data_s, data_Ir, label='Corrente Rotórica (Ir)')
+    ax2.axhline(Io, color='r', linestyle='--', label='Corrente de Magnetização (Io)')
+    ax2.set_title('Corrente Rotórica e de Magnetização em Função do Escorregamento')
+    ax2.set_xlabel('Escorregamento (s)')
+    ax2.set_ylabel('Corrente (A)')
+    ax2.set_xlim([1, 0])  # Definir limite do eixo x de 1 a 0, invertido
+    ax2.grid(True)  # Adicionar linhas de grade ao gráfico
+    ax2.legend()
+
+
+    # Salvar a imagem em um arquivo temporário e converter para base64
+    img_stream2 = io.BytesIO()
+    plt.savefig(img_stream2, format='png')
+    img_stream2.seek(0)
+    img_str2 = base64.b64encode(img_stream2.getvalue()).decode('utf-8')
+
+    # Encerrar a figura para liberar memória
+    plt.close(fig2)
+
+    # Retornar para a página HTML com o gráfico e tabela invertidos
+    return render_template(
+        'graph_page.html',
+        img_str1=img_str1,
+        img_str2=img_str2,
+        table_data=table_data,
+        P=round(P, 4),
+        V=round(V, 4),
+        rend=round(rend, 4),
+        Fp=round(Fp, 4),
+        conexao=conexao,
+        J=round(J, 4),
+        rs=round(rs, 4),
+        xr=round(xr, 4),
+        xs=round(xs, 4),
+        rr=round(rr, 4),
+        Vth=round(Vth, 4),
+        Rsth=round(Rsth, 4),
+        Xth=round(Xth, 4),
+        ws=round(ws, 4),
+        Pkw=round(Pkw, 4),
+        Tn=round(Tn, 4),
+        Pkwrend=round(Pkwrend, 4),
+        S=round(S, 4),
+        In=round(In, 4),
+        Io=round(Io, 4),
+        xmg=round(xmg, 4),
+        Ip=round(Ip, 4),
+        Tnumerador=round_values(Tnumerador, 4),
+        Tdenominador=round_values(Tdenominador, 4),
+        rrnovo=round_values(rrnovo, 4),
+    )
+
+@app.route('/export_excel', methods=['POST'])
+def export_excel():
+    data = request.get_json()
+    if 'table_data' not in data:
+        return jsonify({"error": "No table data found"}), 400
+
+    df = pd.DataFrame(data['table_data'])
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Table Data')
+    output.seek(0)
+
+    return send_file(output, download_name='table_data.xlsx', as_attachment=True)
+
+if __name__ == '__main__':
+    app.run(debug=True)
