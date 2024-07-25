@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parâmetros do Motor de Indução</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+        }
+        .header {
+            background-color: #004080;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            height: 20px;
+            color: white;
+        }
+
+        .header img {
+            height: 20px;
+            margin-left: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input[type="text"], select {
+            padding: 8px;
+            width: calc(100% - 16px);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            background-color: #004080;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: block;
+            margin: 0 auto;
+        }
+        input[type="submit"]:hover {
+            background-color: #004080;
+        }
+        .error-message {
+            color: red;
+            font-size: 12px;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .footer {
+            background-color: #004080;
+            color: white;
+            text-align: center;
+            padding: 60px 0;
+            position: relative;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+    </div>
+    <h1>Parâmetros do Motor de Indução</h1>
+    <form id="motor-form" action="/plot" method="post" onsubmit="return validateForm()">
+        <label for="V">Tensão (V):</label>
+        <input type="text" id="V" name="V"><br>
+        <label for="P">Potência (CV):</label>
+        <input type="text" id="P" name="P"><br>
+        <label for="J">Momento de Inércia (m^2kg):</label>
+        <input type="text" id="J" name="J"><br>
+        <label for="nr">Rotação nominal (RPM):</label>
+        <input type="text" id="nr" name="nr"><br>
+        <label for="Fp">Fator de potência:</label>
+        <input type="text" id="Fp" name="Fp"><br>
+        <label for="polos">Polos:</label>
+        <input type="text" id="polos" name="polos"><br>
+        <label for="rend">Rendimento (%):</label>
+        <input type="text" id="rend" name="rend" pattern="[0-9]+(\.[0-9]+)?" title="Digite um número válido (use ponto como separador decimal)"><br>
+        <label for="conexao">Tipo de Ligação:</label>
+        <select id="conexao" name="conexao">
+            <option value="">Selecione</option>
+            <option value="Estrela">Estrela</option>
+            <option value="triangulo">Triângulo</option>
+        </select><br><br>
+        <label for="f">Frequência (Hz):</label>
+        <input type="text" id="f" name="f"><br>
+        <label for="rs">Resistência do Estator (Ω):</label>
+        <input type="text" id="rs" name="rs"><br>
+        <label for="xs">Reatância do Estator (Ω):</label>
+        <input type="text" id="xs" name="xs"><br>
+        <label for="rr">Resistência do Rotor (Ω):</label>
+        <input type="text" id="rr" name="rr"><br>
+        <label for="xr">Reatância do Rotor (Ω):</label>
+        <input type="text" id="xr" name="xr"><br>
+        <input type="submit" value="Gerar gráficos">
+    </form>
+
+    <div class="error-message" id="error-message"></div>
+
+    <div id="graph-container">
+        <!-- O gráfico será inserido aqui -->
+    </div>
+
+    <div id="table-container">
+        <!-- A tabela será inserida aqui -->
+    </div>
+
+    <div class="header">
+    </div>
+
+    <script>
+        function validateForm() {
+            const requiredFields = ['rs', 'xs', 'rr', 'xr', 'V', 'P', 'J', 'nr', 'Fp', 'polos', 'rend', 'conexao', 'f'];
+            let isValid = true;
+            requiredFields.forEach(field => {
+                const value = document.getElementById(field).value.trim();
+                if (!value) {
+                    isValid = false;
+                    document.getElementById(field).style.borderColor = 'red';
+                } else {
+                    document.getElementById(field).style.borderColor = '';
+                }
+            });
+            const errorMessage = document.getElementById('error-message');
+            if (!isValid) {
+                errorMessage.textContent = "Por favor, preencha todos os campos.";
+            } else {
+                errorMessage.textContent = "";
+            }
+            return isValid;
+        }
+
+        function updateGraphAndTable() {
+            const formData = new FormData(document.getElementById('motor-form'));
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+
+            fetch('/update_plot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Atualizar gráfico
+                const img = document.createElement('img');
+                img.src = 'data:image/png;base64,' + data.img_str;
+                const graphContainer = document.getElementById('graph-container');
+                graphContainer.innerHTML = '';
+                graphContainer.appendChild(img);
+
+                // Atualizar tabela
+                const tableContainer = document.getElementById('table-container');
+                tableContainer.innerHTML = '';
+                const table = document.createElement('table');
+                const headerRow = document.createElement('tr');
+                const headers = ['Escorregamento (s)', 'Torque (Nm)', 'Rsth', 'Xsth', 'x\'r', 'r\'r0', 'k1', 'r\'r', 'k2', 'Vth', 'w', 'Xe^2'];
+                headers.forEach(headerText => {
+                    const header = document.createElement('th');
+                    header.textContent = headerText;
+                    headerRow.appendChild(header);
+                });
+                table.appendChild(headerRow);
+
+                data.table_data.forEach(rowData => {
+                    const row = document.createElement('tr');
+                    Object.values(rowData).forEach(cellData => {
+                        const cell = document.createElement('td');
+                        cell.textContent = cellData;
+                        row.appendChild(cell);
+                    });
+                    table.appendChild(row);
+                });
+
+                tableContainer.appendChild(table);
+            })
+            .catch(error => console.error('Erro:', error));
+        }
+
+        document.getElementById('k1').addEventListener('input', updateGraphAndTable);
+        document.getElementById('k2').addEventListener('input', updateGraphAndTable);
+        document.getElementById('f').addEventListener('input', updateGraphAndTable);
+    </script>
+</body>
+</html>
